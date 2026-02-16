@@ -1,24 +1,35 @@
+import sys
+import subprocess
+import pkg_resources
 from pathlib import Path
 import logging
 import time
 
-import clip
-
+# ------------------------------------------
+# ✅ AUTO-INSTALL CLIP IF MISSING (CRITICAL FIX)
+# ------------------------------------------
+try:
+    import clip
+    import torch
+except ImportError:
+    import subprocess
+    import sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "git+https://github.com/openai/CLIP.git"])
+    import clip
+    import torch
 
 import joblib
 import streamlit as st
-import torch
 from PIL import Image, UnidentifiedImageError
 
 st.set_page_config(page_title="Multimodal Misinformation Detector")
 
 # ------------------------------------------
 # ✅ Robust paths (works on Streamlit Cloud)
-# demo/app.py  -> project root is one level up
 # ------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent          # .../demo
 PROJECT_ROOT = BASE_DIR.parent                      # .../(project root)
-MODEL_PATH = PROJECT_ROOT / "demo" / "model.pkl"    # .../demo/model.pkl
+MODEL_PATH = BASE_DIR / "model.pkl"                 # .../demo/model.pkl (simpler!)
 
 DEVICE = "cpu"
 
@@ -40,17 +51,33 @@ def confidence_band(prob: float) -> str:
 
 @st.cache_resource(show_spinner=False)
 def load_clip_model(device: str):
-    model, preprocess = clip.load("ViT-B/32", device=device)
-    model.eval()
-    return model, preprocess
+    """Load CLIP model with proper error handling"""
+    try:
+        model, preprocess = clip.load("ViT-B/32", device=device)
+        model.eval()
+        logger.info("CLIP loaded successfully")
+        return model, preprocess
+    except Exception as e:
+        logger.error(f"Failed to load CLIP: {e}")
+        st.error(f"Failed to load CLIP model: {e}")
+        st.stop()
 
 
 @st.cache_resource(show_spinner=False)
 def load_classifier(model_path: str):
-    return joblib.load(model_path)
+    """Load trained classifier"""
+    try:
+        model = joblib.load(model_path)
+        logger.info("Classifier loaded successfully")
+        return model
+    except Exception as e:
+        logger.error(f"Failed to load classifier: {e}")
+        st.error(f"Failed to load classifier: {e}")
+        st.stop()
 
 
 def prepare_features(image: Image.Image, text: str, clip_model, preprocess):
+    """Prepare features exactly like training"""
     image_input = preprocess(image).unsqueeze(0)
     text_input = clip.tokenize([text])
 
@@ -58,13 +85,17 @@ def prepare_features(image: Image.Image, text: str, clip_model, preprocess):
         img_emb = clip_model.encode_image(image_input)
         txt_emb = clip_model.encode_text(text_input)
 
+    # Normalize embeddings (important!)
     img_emb = img_emb / img_emb.norm(dim=-1, keepdim=True)
     txt_emb = txt_emb / txt_emb.norm(dim=-1, keepdim=True)
+    
+    # Concatenate exactly like training
     features = torch.cat([img_emb, txt_emb], dim=1).cpu().numpy()
     return features
 
 
 def predict_label(features, classifier):
+    """Get prediction and probability"""
     pred = int(classifier.predict(features)[0])
 
     prob = None
@@ -74,6 +105,9 @@ def predict_label(features, classifier):
     return pred, prob
 
 
+# ------------------------------------------
+# UI
+# ------------------------------------------
 st.title("Multimodal Misinformation Detector")
 st.caption("Upload an image and related text to estimate misinformation risk.")
 show_debug = st.sidebar.checkbox("Show debug panel", value=False)
@@ -83,6 +117,7 @@ if show_debug:
         st.write(f"Device: `{DEVICE}`")
         st.write(f"Project root: `{PROJECT_ROOT}`")
         st.write(f"Model path: `{MODEL_PATH}`")
+        st.write(f"Model exists: `{MODEL_PATH.exists()}`")
 
 if not MODEL_PATH.exists():
     logger.error("Missing model file at %s", MODEL_PATH)
@@ -143,7 +178,12 @@ if run_clicked:
         st.stop()
 
     st.subheader("Prediction")
-    st.write("Likely Misinformation" if pred == 1 else "Likely Consistent")
+    
+    # Custom styling for prediction
+    if pred == 1:
+        st.markdown("### ⚠️ **Likely Misinformation**")
+    else:
+        st.markdown("### ✅ **Likely Consistent**")
 
     st.subheader("Misinformation Probability")
     if prob is None:
@@ -151,7 +191,15 @@ if run_clicked:
     else:
         bounded_prob = max(0.0, min(1.0, prob))
         band = confidence_band(bounded_prob)
-        st.progress(bounded_prob)
+        
+        # Color-coded progress bar
+        if bounded_prob > 0.66:
+            st.progress(bounded_prob, text="High risk")
+        elif bounded_prob > 0.33:
+            st.progress(bounded_prob, text="Medium risk")
+        else:
+            st.progress(bounded_prob, text="Low risk")
+            
         st.caption(f"Estimated probability: {bounded_prob * 100:.1f}%")
         st.caption(f"Confidence band: {band}")
 
@@ -167,5 +215,11 @@ if run_clicked:
     st.subheader("Why this decision?")
     st.write(
         "The prediction comes from a classifier trained on multimodal examples, "
-        "using both visual and textual CLIP embeddings."
+        "using both visual and textual CLIP embeddings. The model learns patterns "
+        "from real misinformation data, where even semantically aligned image-text "
+        "pairs can indicate misinformation if the text lacks context or uses "
+        "sensational framing."
     )
+    
+    if prob is not None:
+        st.caption(f"Model confidence: {abs(prob - 0.5) * 2:.1f} / 1.0")
