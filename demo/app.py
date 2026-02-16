@@ -10,8 +10,14 @@ from PIL import Image, UnidentifiedImageError
 
 st.set_page_config(page_title="Multimodal Misinformation Detector")
 
-BASE_DIR = Path(__file__).resolve().parent
-MODEL_PATH = BASE_DIR / "model.pkl"
+# ------------------------------------------
+# ✅ Robust paths (works on Streamlit Cloud)
+# demo/app.py  -> project root is one level up
+# ------------------------------------------
+BASE_DIR = Path(__file__).resolve().parent          # .../demo
+PROJECT_ROOT = BASE_DIR.parent                      # .../(project root)
+MODEL_PATH = PROJECT_ROOT / "demo" / "model.pkl"    # .../demo/model.pkl
+
 DEVICE = "cpu"
 
 logger = logging.getLogger("mbd_app")
@@ -73,6 +79,7 @@ show_debug = st.sidebar.checkbox("Show debug panel", value=False)
 if show_debug:
     with st.sidebar.expander("Debug", expanded=True):
         st.write(f"Device: `{DEVICE}`")
+        st.write(f"Project root: `{PROJECT_ROOT}`")
         st.write(f"Model path: `{MODEL_PATH}`")
 
 if not MODEL_PATH.exists():
