@@ -1,15 +1,13 @@
 streamlit
-numpy
-pandas
-pillow
-joblib
-scikit-learn==1.6.1
-
 torch
 torchvision
-
-# Critical: keep setuptools BEFORE pkg_resources removal
-setuptools==80.9.0
+ftfy
+regex
+tqdm
+pillow
+scikit-learn==1.6.1
+joblib
+setuptools
 wheel
-
+pip
 git+https://github.com/openai/CLIP.git
