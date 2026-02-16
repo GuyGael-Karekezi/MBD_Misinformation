@@ -5,4 +5,5 @@ pillow
 joblib
 scikit-learn==1.6.1
 numpy
-git+https://github.com/openai/CLIP.git
+clip-anytorch
+
