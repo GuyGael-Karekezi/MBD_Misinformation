@@ -2,7 +2,8 @@ from pathlib import Path
 import logging
 import time
 
-import clip_anytorch as clip
+import clip
+
 
 import joblib
 import streamlit as st

@@ -1,9 +1,15 @@
 streamlit
-torch
-torchvision
+numpy
+pandas
 pillow
 joblib
 scikit-learn==1.6.1
-numpy
-clip-anytorch
 
+torch
+torchvision
+
+# Critical: keep setuptools BEFORE pkg_resources removal
+setuptools==80.9.0
+wheel
+
+git+https://github.com/openai/CLIP.git
