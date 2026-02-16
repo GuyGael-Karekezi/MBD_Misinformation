@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# Data
+data/
+outputs/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Logs
+*.out
+nohup.out
+
+# Large files
+*.parquet
+
+# OS
+.DS_Store
+Thumbs.db
