@@ -128,6 +128,9 @@ uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"]
 text_input = st.text_area("Enter accompanying text", placeholder="Write the caption/post text here...")
 run_clicked = st.button("Run prediction", type="primary")
 
+if uploaded_image is not None:
+    st.image(uploaded_image, caption="Uploaded image preview", use_column_width=True)
+
 if run_clicked:
     cleaned_text = text_input.strip()
 
