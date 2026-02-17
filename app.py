@@ -74,9 +74,13 @@ def prepare_features(image: Image.Image, text: str, clip_model, preprocess):
     # Normalize embeddings (important!)
     img_emb = img_emb / img_emb.norm(dim=-1, keepdim=True)
     txt_emb = txt_emb / txt_emb.norm(dim=-1, keepdim=True)
-    
-    # Concatenate exactly like training
-    features = torch.cat([img_emb, txt_emb], dim=1).cpu().numpy()
+
+    # Training used: cosine similarity + absolute difference + concatenation
+    # => 1 + 512 + 1024 = 1537 features for ViT-B/32 embeddings.
+    cos_sim = torch.nn.functional.cosine_similarity(img_emb, txt_emb, dim=1).unsqueeze(1)
+    abs_diff = torch.abs(img_emb - txt_emb)
+    concat = torch.cat([img_emb, txt_emb], dim=1)
+    features = torch.cat([cos_sim, abs_diff, concat], dim=1).cpu().numpy()
     return features
 
 
