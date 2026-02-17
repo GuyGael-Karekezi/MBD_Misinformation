@@ -1,45 +1,7 @@
-import sys
-import subprocess
-import importlib.util
 from pathlib import Path
 import logging
 import time
 
-# ------------------------------------------
-# ✅ ROBUST CLIP INSTALLATION
-# ------------------------------------------
-def ensure_clip_installed():
-    """Ensure CLIP is installed with proper dependencies"""
-    # First ensure setuptools is available
-    try:
-        import pkg_resources
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "setuptools==75.8.0"])
-    
-    # Check if clip is installed
-    clip_spec = importlib.util.find_spec("clip")
-    if clip_spec is None:
-        import streamlit as st
-        with st.spinner("Installing CLIP (this may take a minute)..."):
-            try:
-                # Try installing with pre-built dependencies first
-                subprocess.check_call([
-                    sys.executable, "-m", "pip", "install",
-                    "ftfy", "regex", "tqdm"
-                ])
-                # Then install CLIP from GitHub
-                subprocess.check_call([
-                    sys.executable, "-m", "pip", "install",
-                    "git+https://github.com/openai/CLIP.git"
-                ])
-            except Exception as e:
-                st.error(f"Failed to install CLIP: {e}")
-                st.stop()
-
-# Run the installation check
-ensure_clip_installed()
-
-# Now import CLIP
 import clip
 import torch
 import joblib
