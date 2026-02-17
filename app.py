@@ -125,7 +125,9 @@ text_input = st.text_area("Enter accompanying text", placeholder="Write the capt
 run_clicked = st.button("Run prediction", type="primary")
 
 if uploaded_image is not None:
-    st.image(uploaded_image, caption="Uploaded image preview", use_column_width=True)
+    preview_col, _ = st.columns([1, 2])
+    with preview_col:
+        st.image(uploaded_image, caption="Uploaded image preview", width=260)
 
 if run_clicked:
     cleaned_text = text_input.strip()
