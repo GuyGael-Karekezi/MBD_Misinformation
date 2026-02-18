@@ -11,7 +11,7 @@ from PIL import Image, UnidentifiedImageError
 
 st.set_page_config(page_title="Multimodal Misinformation Detector")
 
-# Here we define robust paths so this app works on Streamlit Cloud.
+# Defines robust paths so this app works on Streamlit Cloud.
 BASE_DIR = Path(__file__).resolve().parent          # .../demo
 PROJECT_ROOT = BASE_DIR.parent                      # .../(project root)
 MODEL_PATH = BASE_DIR / "model.pkl"                 # .../demo/model.pkl (simpler!)
@@ -71,12 +71,12 @@ def prepare_features(image: Image.Image, text: str, clip_model, preprocess):
         img_emb = clip_model.encode_image(image_input)
         txt_emb = clip_model.encode_text(text_input)
 
-    # Here we normalize embeddings before feature construction.
+    # Normalizes embeddings before feature construction.
     img_emb = img_emb / img_emb.norm(dim=-1, keepdim=True)
     txt_emb = txt_emb / txt_emb.norm(dim=-1, keepdim=True)
 
-    # We match training features: cosine similarity, absolute difference, and concatenation.
-    # We get 1537 features in total for ViT-B/32 embeddings.
+    # Matches training features: cosine similarity, absolute difference, and concatenation.
+    # Produces 1537 features in total for ViT-B/32 embeddings.
     cos_sim = torch.nn.functional.cosine_similarity(img_emb, txt_emb, dim=1).unsqueeze(1)
     abs_diff = torch.abs(img_emb - txt_emb)
     concat = torch.cat([img_emb, txt_emb], dim=1)
@@ -213,7 +213,7 @@ def predict_label(features, classifier):
     return pred, prob
 
 
-# Here we build the user interface.
+# Builds the user interface.
 st.title("Multimodal Misinformation Detector")
 st.caption("Upload an image and related text to estimate misinformation risk.")
 show_debug = st.sidebar.checkbox("Show debug panel", value=False)
@@ -299,7 +299,7 @@ if run_clicked:
 
     st.subheader("Prediction")
 
-    # We show prediction text with simple visual emphasis.
+    # Shows prediction text with simple visual emphasis.
     if pred == 1:
         st.markdown("### **Likely Misinformation**")
     else:
@@ -312,7 +312,7 @@ if run_clicked:
         bounded_prob = max(0.0, min(1.0, prob))
         band = confidence_band(bounded_prob)
 
-        # We show a risk bar based on probability level.
+        # Shows a risk bar based on probability level.
         if bounded_prob > 0.66:
             st.progress(bounded_prob, text="High risk")
         elif bounded_prob > 0.33:
