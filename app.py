@@ -5,6 +5,7 @@ import time
 import clip
 import torch
 import joblib
+import numpy as np
 import streamlit as st
 from PIL import Image, UnidentifiedImageError
 
@@ -16,6 +17,7 @@ PROJECT_ROOT = BASE_DIR.parent                      # .../(project root)
 MODEL_PATH = BASE_DIR / "model.pkl"                 # .../demo/model.pkl (simpler!)
 
 DEVICE = "cpu"
+MISINFO_LABEL = 1
 
 logger = logging.getLogger("mbd_app")
 if not logger.handlers:
@@ -82,13 +84,131 @@ def prepare_features(image: Image.Image, text: str, clip_model, preprocess):
     return features
 
 
+def sigmoid(z: float) -> float:
+    return 1.0 / (1.0 + np.exp(-z))
+
+
+def get_misinfo_class_index(classifier) -> int:
+    if not hasattr(classifier, "classes_"):
+        raise ValueError("Classifier exposes predict_proba but not classes_.")
+
+    classes = list(classifier.classes_)
+    if MISINFO_LABEL not in classes:
+        raise ValueError(
+            f"Misinformation label {MISINFO_LABEL} missing from classifier classes: {classes}"
+        )
+
+    return classes.index(MISINFO_LABEL)
+
+
+def predict_misinfo_probability(features, classifier) -> float:
+    if not hasattr(classifier, "predict_proba"):
+        raise ValueError("Classifier does not support predict_proba.")
+
+    misinfo_idx = get_misinfo_class_index(classifier)
+    proba = classifier.predict_proba(features)[0]
+    return float(proba[misinfo_idx])
+
+
+def linear_explain(features_np: np.ndarray, classifier):
+    """
+    Exact linear explanation for linear classifiers like LogisticRegression.
+    Returns: prob, logit, bias, per_feature_contrib, group_contribs(dict)
+    """
+    if not (hasattr(classifier, "coef_") and hasattr(classifier, "intercept_")):
+        raise ValueError("Classifier does not expose linear coefficients.")
+
+    n_features = int(features_np.shape[1])
+    if n_features <= 1 or (n_features - 1) % 3 != 0:
+        raise ValueError(f"Unexpected feature layout: got {n_features}, expected 1 + 3*d.")
+
+    emb_dim = (n_features - 1) // 3
+    w = classifier.coef_.reshape(-1)
+    b = float(classifier.intercept_.reshape(-1)[0])
+    x = features_np.reshape(-1)
+
+    if w.shape[0] != x.shape[0]:
+        raise ValueError(
+            f"Coefficient/feature mismatch: coef={w.shape[0]} features={x.shape[0]}"
+        )
+
+    contrib = w * x
+    logit = b + float(contrib.sum())
+    prob = sigmoid(logit)
+
+    cos_idx = slice(0, 1)
+    abs_idx = slice(1, 1 + emb_dim)
+    img_idx = slice(1 + emb_dim, 1 + emb_dim + emb_dim)
+    txt_idx = slice(1 + emb_dim + emb_dim, 1 + emb_dim + 2 * emb_dim)
+
+    group_contribs = {
+        "bias": b,
+        "cos_sim": float(contrib[cos_idx].sum()),
+        "abs_diff": float(contrib[abs_idx].sum()),
+        "img_emb": float(contrib[img_idx].sum()),
+        "txt_emb": float(contrib[txt_idx].sum()),
+        "total_logit": logit,
+    }
+    return prob, logit, b, contrib, group_contribs
+
+
+def top_k_contribs(contrib: np.ndarray, k: int = 8):
+    """Return top positive and negative per-dimension contributions."""
+    if contrib.size == 0:
+        return np.array([], dtype=int), np.array([]), np.array([], dtype=int), np.array([])
+
+    k = max(1, min(k, contrib.size))
+    idx_sorted = np.argsort(contrib)
+    neg = idx_sorted[:k]
+    pos = idx_sorted[-k:][::-1]
+    return pos, contrib[pos], neg, contrib[neg]
+
+
+def word_influence_loo(
+    image: Image.Image,
+    text: str,
+    clip_model,
+    preprocess,
+    classifier,
+    max_words: int = 25,
+):
+    """
+    Approximate token influence with leave-one-word-out.
+    Positive delta means the removed word increased misinformation probability.
+    """
+    if not hasattr(classifier, "predict_proba"):
+        return []
+
+    words = text.strip().split()
+    if not words:
+        return []
+
+    words = words[:max_words]
+    base_text = " ".join(words)
+    base_feat = prepare_features(image, base_text, clip_model, preprocess)
+    base_prob = predict_misinfo_probability(base_feat, classifier)
+
+    impacts = []
+    for i, word in enumerate(words):
+        new_words = words[:i] + words[i + 1 :]
+        if not new_words:
+            continue
+        feat_i = prepare_features(image, " ".join(new_words), clip_model, preprocess)
+        prob_i = predict_misinfo_probability(feat_i, classifier)
+        delta = base_prob - prob_i
+        impacts.append((word, delta))
+
+    impacts.sort(key=lambda t: abs(t[1]), reverse=True)
+    return impacts[:10]
+
+
 def predict_label(features, classifier):
     """Get prediction and probability"""
     pred = int(classifier.predict(features)[0])
 
     prob = None
     if hasattr(classifier, "predict_proba"):
-        prob = float(classifier.predict_proba(features)[0][1])
+        prob = predict_misinfo_probability(features, classifier)
 
     return pred, prob
 
@@ -114,11 +234,20 @@ try:
     with st.spinner("Loading CLIP and classifier..."):
         clip_model, preprocess = load_clip_model(DEVICE)
         clf = load_classifier(str(MODEL_PATH))
+        if hasattr(clf, "predict_proba"):
+            _ = get_misinfo_class_index(clf)
     logger.info("Models loaded successfully. device=%s model_path=%s", DEVICE, MODEL_PATH)
 except Exception as exc:
     logger.exception("Model loading failed")
     st.error(f"Failed to load models: {exc}")
     st.stop()
+
+if show_debug:
+    with st.sidebar.expander("Classifier", expanded=False):
+        st.write(f"classes_: `{getattr(clf, 'classes_', 'N/A')}`")
+        if hasattr(clf, "predict_proba"):
+            st.write(f"misinfo class label: `{MISINFO_LABEL}`")
+            st.write(f"misinfo class index: `{get_misinfo_class_index(clf)}`")
 
 uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 text_input = st.text_area("Enter accompanying text", placeholder="Write the caption/post text here...")
@@ -169,12 +298,12 @@ if run_clicked:
         st.stop()
 
     st.subheader("Prediction")
-    
+
     # We show prediction text with simple visual emphasis.
     if pred == 1:
-        st.markdown("### ⚠️ **Likely Misinformation**")
+        st.markdown("### **Likely Misinformation**")
     else:
-        st.markdown("### ✅ **Likely Consistent**")
+        st.markdown("### **Likely Consistent**")
 
     st.subheader("Misinformation Probability")
     if prob is None:
@@ -182,7 +311,7 @@ if run_clicked:
     else:
         bounded_prob = max(0.0, min(1.0, prob))
         band = confidence_band(bounded_prob)
-        
+
         # We show a risk bar based on probability level.
         if bounded_prob > 0.66:
             st.progress(bounded_prob, text="High risk")
@@ -190,7 +319,7 @@ if run_clicked:
             st.progress(bounded_prob, text="Medium risk")
         else:
             st.progress(bounded_prob, text="Low risk")
-            
+
         st.caption(f"Estimated probability: {bounded_prob * 100:.1f}%")
         st.caption(f"Confidence band: {band}")
 
@@ -211,6 +340,78 @@ if run_clicked:
         "pairs can indicate misinformation if the text lacks context or uses "
         "sensational framing."
     )
-    
+
+    cos_sim_value = float(features[0, 0])
+    if cos_sim_value >= 0.28:
+        st.caption(
+            "Image and text are conceptually related. This does not guarantee the claim is true."
+        )
+    else:
+        st.caption(
+            "Image and text look mismatched. This is a common false-connection signal."
+        )
+
     if prob is not None:
         st.caption(f"Model confidence: {abs(prob - 0.5) * 2:.1f} / 1.0")
+
+    st.subheader("Explainability")
+    try:
+        prob_lin, logit, _, contrib, groups = linear_explain(features, clf)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.metric("Logit (raw score)", f"{logit:.3f}")
+        with c2:
+            st.metric("Sigmoid(logit)", f"{prob_lin:.3f}")
+
+        st.markdown("**Contribution to logit by feature group**")
+        st.write(
+            {
+                "bias": round(groups["bias"], 4),
+                "cos_sim": round(groups["cos_sim"], 4),
+                "abs_diff": round(groups["abs_diff"], 4),
+                "img_emb": round(groups["img_emb"], 4),
+                "txt_emb": round(groups["txt_emb"], 4),
+            }
+        )
+
+        pos_idx, pos_vals, neg_idx, neg_vals = top_k_contribs(contrib, k=8)
+        st.markdown("**Top + dimensions (push toward misinformation)**")
+        st.write(
+            [
+                {"feature_idx": int(i), "logit_contrib": float(v)}
+                for i, v in zip(pos_idx, pos_vals)
+            ]
+        )
+
+        st.markdown("**Top - dimensions (push toward consistent)**")
+        st.write(
+            [
+                {"feature_idx": int(i), "logit_contrib": float(v)}
+                for i, v in zip(neg_idx, neg_vals)
+            ]
+        )
+    except Exception as exc:
+        logger.info("Explainability disabled: %s", exc)
+        st.info("Detailed linear explainability is unavailable for this classifier layout.")
+
+    with st.expander("Word influence (approx, leave-one-word-out)"):
+        try:
+            impacts = word_influence_loo(
+                image, cleaned_text, clip_model, preprocess, clf, max_words=25
+            )
+            if not impacts:
+                st.write("Not enough words or probability output to compute influence.")
+            else:
+                st.caption(
+                    "Positive delta means that word increased misinformation probability."
+                )
+                st.write(
+                    [
+                        {"word": w, "delta_prob": round(float(d), 4)}
+                        for w, d in impacts
+                    ]
+                )
+        except Exception as exc:
+            logger.info("Word influence failed: %s", exc)
+            st.write("Could not compute word influence for this input.")
