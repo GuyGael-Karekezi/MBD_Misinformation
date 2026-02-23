@@ -17,7 +17,7 @@ PROJECT_ROOT = BASE_DIR.parent                      # .../(project root)
 MODEL_PATH = BASE_DIR / "model.pkl"                 # .../demo/model.pkl (simpler!)
 
 DEVICE = "cpu"
-MISINFO_LABEL = 1
+MISINFO_LABEL = 0
 
 logger = logging.getLogger("mbd_app")
 if not logger.handlers:
@@ -113,6 +113,7 @@ def predict_misinfo_probability(features, classifier) -> float:
 def linear_explain(features_np: np.ndarray, classifier):
     """
     Exact linear explanation for linear classifiers like LogisticRegression.
+    Returns probability/logit for the classifier's positive class (classes_[1] for binary).
     Returns: prob, logit, bias, per_feature_contrib, group_contribs(dict)
     """
     if not (hasattr(classifier, "coef_") and hasattr(classifier, "intercept_")):
@@ -150,6 +151,14 @@ def linear_explain(features_np: np.ndarray, classifier):
         "total_logit": logit,
     }
     return prob, logit, b, contrib, group_contribs
+
+
+def get_positive_class_label(classifier):
+    """Return the class associated with the linear logit/sigmoid direction."""
+    classes = getattr(classifier, "classes_", None)
+    if classes is None or len(classes) < 2:
+        return None
+    return int(list(classes)[-1])
 
 
 def top_k_contribs(contrib: np.ndarray, k: int = 8):
@@ -300,7 +309,7 @@ if run_clicked:
     st.subheader("Prediction")
 
     # Shows prediction text with simple visual emphasis.
-    if pred == 1:
+    if pred == MISINFO_LABEL:
         st.markdown("### **Likely Misinformation**")
     else:
         st.markdown("### **Likely Consistent**")
@@ -357,12 +366,25 @@ if run_clicked:
     st.subheader("Explainability")
     try:
         prob_lin, logit, _, contrib, groups = linear_explain(features, clf)
+        pos_class_label = get_positive_class_label(clf)
+        if pos_class_label is None:
+            misinfo_prob_lin = prob_lin
+            pos_push_label = "misinformation"
+            neg_push_label = "consistent"
+        else:
+            misinfo_prob_lin = prob_lin if pos_class_label == MISINFO_LABEL else (1.0 - prob_lin)
+            if pos_class_label == MISINFO_LABEL:
+                pos_push_label = "misinformation"
+                neg_push_label = "consistent"
+            else:
+                pos_push_label = "consistent"
+                neg_push_label = "misinformation"
 
         c1, c2 = st.columns(2)
         with c1:
             st.metric("Logit (raw score)", f"{logit:.3f}")
         with c2:
-            st.metric("Sigmoid(logit)", f"{prob_lin:.3f}")
+            st.metric("Misinformation prob (from logit)", f"{misinfo_prob_lin:.3f}")
 
         st.markdown("**Contribution to logit by feature group**")
         st.write(
@@ -376,7 +398,7 @@ if run_clicked:
         )
 
         pos_idx, pos_vals, neg_idx, neg_vals = top_k_contribs(contrib, k=8)
-        st.markdown("**Top + dimensions (push toward misinformation)**")
+        st.markdown(f"**Top + dimensions (push toward {pos_push_label})**")
         st.write(
             [
                 {"feature_idx": int(i), "logit_contrib": float(v)}
@@ -384,7 +406,7 @@ if run_clicked:
             ]
         )
 
-        st.markdown("**Top - dimensions (push toward consistent)**")
+        st.markdown(f"**Top - dimensions (push toward {neg_push_label})**")
         st.write(
             [
                 {"feature_idx": int(i), "logit_contrib": float(v)}
