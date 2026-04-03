@@ -1,0 +1,45 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+
+\title{African-Context Adaptation for Multimodal Misinformation Detection}
+\author{Anonymous Submission}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Multimodal misinformation often spreads through image--text pairs in which the visual content is real, but the accompanying claim reframes the image in misleading ways. While benchmark datasets such as Fakeddit have supported rapid progress in multimodal misinformation detection, it remains unclear whether models trained on these largely non-African data sources transfer effectively to African-context examples. In this work, we study adaptation rather than benchmark-only generalization. We build an African-context multimodal dataset of local image--text examples labeled as \texttt{misinformation} or \texttt{likely\_consistent}, and represent both Fakeddit and African samples using CLIP-based image--text consistency features. We then compare three settings: in-domain evaluation on Fakeddit, pre-adaptation evaluation on African data, and adaptation using combined Fakeddit plus African training data with evaluation on an unseen African holdout.
+
+Our preliminary results show a clear adaptation effect. The original Fakeddit-trained model performs strongly in-domain, but drops substantially on African-context data, especially on misinformation recall. After adaptation with African training examples, African misinformation recall and misinformation F1 improve markedly on the held-out African split, while performance on the original Fakeddit test set remains strong and even improves in our current setup. These findings suggest that benchmark-trained multimodal misinformation detectors are not sufficient on their own for African contexts, but targeted African adaptation can improve robustness without sacrificing source-domain utility. We position this work as an early step toward more inclusive multimodal misinformation detection for underrepresented media environments.
+\end{abstract}
+
+\section{Motivation}
+Recent multimodal misinformation systems have shown strong performance on benchmark datasets, but many are evaluated primarily on data drawn from Western or globally dominant online platforms. This raises an important question: if a model is trained on a mainstream benchmark, will it still perform well when applied to African-context image--text misinformation? Our project starts from this gap and asks whether adaptation with African examples improves performance more effectively than relying on benchmark transfer alone.
+
+\section{Problem Statement}
+We study multimodal misinformation detection as a binary classification task over image--text pairs. Each example is labeled as either \texttt{misinformation} or \texttt{likely\_consistent}. The central problem is that misinformation in African settings may differ from benchmark data in scene type, text framing, topic emphasis, and domain context. As a result, a model that performs well on benchmark data may still miss misinformation when applied to African examples.
+
+\section{Approach}
+Our pipeline uses CLIP embeddings to model semantic consistency between an image and its paired text. We first train a lightweight logistic regression classifier on Fakeddit features to obtain a benchmark baseline. We then construct an African-context dataset of local image--text examples and evaluate the original model on it before adaptation. Finally, we adapt the model by training on combined Fakeddit and African-train data, while keeping an African holdout set unseen until final evaluation. This design allows us to compare benchmark-only learning, pre-adaptation African performance, and post-adaptation African performance in a fair way.
+
+\section{Preliminary Findings}
+Our initial experiments show three main results. First, the Fakeddit-trained model performs strongly on the original Fakeddit test set. Second, the same model performs noticeably worse when applied directly to African-context data, especially for misinformation recall. Third, adaptation with African training examples improves African holdout performance, particularly on misinformation detection, while preserving strong performance on the original Fakeddit domain. These early results suggest that the main contribution of this project is not only detection itself, but the demonstration that African-context adaptation is an effective strategy for improving multimodal misinformation detection across domains.
+
+\section{Planned Contribution}
+The paper aims to make three contributions:
+\begin{enumerate}[leftmargin=*]
+    \item an African-context multimodal misinformation dataset suitable for adaptation experiments;
+    \item an empirical comparison between benchmark-only performance, pre-adaptation African evaluation, and post-adaptation African evaluation;
+    \item evidence that targeted adaptation can improve African-context misinformation detection while preserving source-domain performance.
+\end{enumerate}
+
+\section{Submission Note}
+This draft is structured as an abstract-oriented paper starter that can be moved into an official IJCAI-style Overleaf template for submission formatting and anonymization.
+
+\end{document}
