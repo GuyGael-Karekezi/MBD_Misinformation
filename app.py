@@ -14,7 +14,18 @@ st.set_page_config(page_title="Multimodal Misinformation Detector")
 # Defines robust paths so this app works on Streamlit Cloud.
 BASE_DIR = Path(__file__).resolve().parent          # .../demo
 PROJECT_ROOT = BASE_DIR.parent                      # .../(project root)
-MODEL_PATH = BASE_DIR / "model.pkl"                 # .../demo/model.pkl (simpler!)
+ADAPTED_MODEL_PATH = BASE_DIR / "adapted_model.pkl"
+BASELINE_MODEL_PATH = BASE_DIR / "model.pkl"
+
+
+def resolve_model_path() -> Path:
+    """Prefer the adapted model when it has been exported, otherwise fall back."""
+    if ADAPTED_MODEL_PATH.exists():
+        return ADAPTED_MODEL_PATH
+    return BASELINE_MODEL_PATH
+
+
+MODEL_PATH = resolve_model_path()
 
 DEVICE = "cpu"
 MISINFO_LABEL = 0
