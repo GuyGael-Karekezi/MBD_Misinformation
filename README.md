@@ -1,63 +1,253 @@
-# Multimodal Misinformation Detector
+﻿# Improving Benchmark-Trained Multimodal Misinformation Detection for African Contexts
 
-This project predicts whether an image-text pair is likely misinformation or likely consistent.
+This repository contains the final technical-group project for multimodal misinformation detection using image-text consistency features from CLIP and a lightweight logistic regression classifier. The project began with a Fakeddit-trained baseline and then adapted that same model using African-context data so that it performs better on African examples while remaining strong on the original benchmark.
 
-The app uses:
-- CLIP (`ViT-B/32`) to extract image and text embeddings.
-- A trained `LogisticRegression` classifier (`model.pkl`) to produce the final prediction.
-- Streamlit for the web interface and deployment.
+The repository includes:
 
-## What This Project Does
+- the main experimentation notebook
+- the African-context dataset and image assets used for adaptation
+- a deployed Streamlit application for interactive prediction
+- paper-writing materials for proposal, midterm, and final report stages
+- collection and annotation documentation
 
-Given:
-- an uploaded image (`jpg`, `jpeg`, `png`)
-- a text input (caption, post text, claim)
+## Project summary
 
-the app:
-1. Encodes image and text with CLIP.
-2. Builds a feature vector that matches the training pipeline.
-3. Runs the logistic regression classifier.
-4. Returns:
-- predicted class (`Likely Misinformation` or `Likely Consistent`)
-- misinformation probability
-- confidence band (`Low`, `Medium`, `High`)
+Many misleading posts do not fabricate an image completely. Instead, they reuse a real image and attach text that changes the implied location, event, actors, or meaning. This project treats multimodal misinformation detection as a semantic consistency problem:
 
-## Model Pipeline
+- the image is encoded with CLIP
+- the text is encoded with CLIP
+- a feature vector is built from image-text similarity and embedding differences
+- a logistic regression classifier predicts whether the pair is `misinformation` or `likely_consistent`
 
-The classifier was trained on a feature vector with **1537 features**:
-- `1` cosine similarity between image and text embeddings
-- `512` absolute difference (`|img_emb - txt_emb|`)
-- `1024` concatenation (`[img_emb, txt_emb]`)
+Our final project focus is not just benchmark performance. It is model improvement:
 
-Total: `1 + 512 + 1024 = 1537`
+- start from a benchmark-trained Fakeddit model
+- test how it behaves on African-context data
+- add African training data to adapt that same model
+- check whether the improved model helps on Africa without hurting Fakeddit
 
-This is important: inference must build the same 1537-dimensional vector or the classifier will fail.
+## Main contributions
 
-## Project Structure
+- A lightweight multimodal misinformation detector built from CLIP (`ViT-B/32`) and logistic regression.
+- An African-context dataset of locally stored image-text examples curated for adaptation experiments.
+- A comparative evaluation across four setups:
+  - original model on Fakeddit
+  - original model on Africa before adaptation
+  - adapted model on Africa holdout
+  - adapted model on Fakeddit
+- A Streamlit application that demonstrates the final model and provides simple explanation outputs.
+
+## Key results
+
+The current notebook results used in the final report are:
+
+| Setup | Accuracy | Macro F1 | Misinfo Precision | Misinfo Recall | Misinfo F1 |
+|---|---:|---:|---:|---:|---:|
+| Fakeddit -> Fakeddit | 0.8473 | 0.8457 | 0.8179 | 0.8424 | 0.8300 |
+| Fakeddit -> Africa | 0.6685 | 0.6336 | 0.7619 | 0.3951 | 0.5203 |
+| Fakeddit + Africa -> Africa | 0.6667 | 0.6667 | 0.6667 | 0.6667 | 0.6667 |
+| Fakeddit + Africa -> Fakeddit | 0.9078 | 0.9068 | 0.8854 | 0.9094 | 0.8972 |
+
+What these results mean:
+
+- the original benchmark model works well in-domain on Fakeddit
+- the same model is weaker on African-context examples before adaptation
+- adding African data improves African misinformation recall and misinformation F1
+- the adapted model remains strong on Fakeddit and even improves on the benchmark in the current run
+
+## Repository structure
 
 ```text
 MBD_Multimodal_Misinformation/
-├─ app.py                     # Streamlit app (main entry point)
-├─ model.pkl                  # Trained LogisticRegression model
-├─ requirements.txt           # Python dependencies
-├─ packages.txt               # Apt dependencies for Streamlit Cloud
-├─ runtime.txt                # Python runtime for deployment
-├─ .streamlit/config.toml     # Streamlit server/runner config
-├─ notebooks/
-│  └─ MBD_Technical_Group.ipynb   # Training and experimentation notebook
-├─ data/                      # Data assets (project-specific)
-├─ models/                    # Additional model artifacts (if used)
-├─ outputs/                   # Generated outputs/results
-└─ src/                       # Python package area (currently minimal)
+|- app.py
+|- model.pkl
+|- README.md
+|- requirements.txt
+|- packages.txt
+|- runtime.txt
+|- .streamlit/
+|  \- config.toml
+|- notebooks/
+|  \- MBD_Technical_Group.ipynb
+|- data/
+|  |- README.md
+|  |- african_context/
+|  |  |- african_context_raw.csv
+|  |  |- african_context_core.csv
+|  |  \- african_context_core_optimized.csv
+|  |- african_validation_images/
+|  |  \- img_*.jpg
+|  |- fakeddit/
+|  \- fakeddit_repo/
+|- docs/
+|  \- african_validation/
+|     |- COLLECTION_CHECKLIST.md
+|     \- template.csv
+|- demo/
+|  |- adapted_model.pkl
+|  |- model.pkl
+|  \- README.md
+|- outputs/
+|- artifacts/
+|- models/
+|- src/
+|- 6981dc05ebba9ede62b43071/
+|- overleaf_abstract/
+|- overleaf_midterm/
+\- tmp_mbd_technical_group/
 ```
 
-## Local Development
+## Important files
 
-### 1. Create and activate a virtual environment
+### Core code and experiments
 
-Windows (PowerShell):
+- [app.py](app.py): Streamlit application
+- [notebooks/MBD_Technical_Group.ipynb](notebooks/MBD_Technical_Group.ipynb): main notebook for dataset inspection, feature extraction, training, adaptation, and evaluation
+- [model.pkl](model.pkl): baseline logistic regression model
 
-```bash
+### African-context data
+
+- [data/african_context/african_context_raw.csv](data/african_context/african_context_raw.csv): current working African-context dataset
+- [data/african_validation_images](data/african_validation_images): local image files used by the African dataset
+- [docs/african_validation/COLLECTION_CHECKLIST.md](docs/african_validation/COLLECTION_CHECKLIST.md): collection guidance
+- [docs/african_validation/template.csv](docs/african_validation/template.csv): data-entry template
+
+### Writing materials
+
+- `tmp_mbd_technical_group/`: Overleaf-linked paper repository
+- `6981dc05ebba9ede62b43071/`: local paper workspace
+- `AuthorKit26/`: AAAI author kit
+
+## Data description
+
+### 1. Fakeddit benchmark data
+
+The benchmark portion of the project is based on Fakeddit, a multimodal misinformation dataset built from Reddit posts. In this project, Fakeddit provides:
+
+- the original source-domain training signal
+- the benchmark test set for in-domain evaluation
+- the baseline model that we later adapt
+
+The notebook filters the raw multimodal table to a practical modeling subset with usable text and local images.
+
+### 2. African-context dataset
+
+The African-context dataset is stored locally and used to measure transfer failure and adaptation benefit. It follows a one-row-per-image format. The working CSV includes fields such as:
+
+- `id`
+- `source_name`
+- `language`
+- `topic`
+- `claim_text`
+- `image_path`
+- `verdict_raw`
+
+Current project summary:
+
+- total rows: `178`
+- misinformation: `81`
+- likely consistent: `97`
+- African train split: `142`
+- African holdout split: `36`
+
+### 3. Labels
+
+The task is binary:
+
+- `misinformation`: the text reframes or misrepresents the image
+- `likely_consistent`: the text appears semantically compatible with the image
+
+## Annotation and data quality
+
+The African-context dataset was annotated by the project team with practical safeguards:
+
+- preference for public-scene images over sensitive close-up portraits
+- avoidance of unnecessary defamation against identifiable private individuals
+- emphasis on visible scene grounding when writing paired text
+
+Annotation workflow:
+
+1. all three annotators labeled examples independently
+2. annotators did not view one another's labels during the first pass
+3. final labels were assigned by majority voting
+4. ambiguous examples were revisited collaboratively
+
+Important limitation:
+
+- the holdout set is small, so the results should be treated as directional evidence rather than a final claim about broad African media performance
+
+## Method overview
+
+The modeling pipeline is intentionally lightweight.
+
+### Feature construction
+
+For each image-text pair:
+
+1. encode image with CLIP
+2. encode text with CLIP
+3. normalize embeddings
+4. build a 1537-dimensional feature vector:
+   - `1` cosine similarity
+   - `512` absolute difference features
+   - `1024` concatenated image and text embedding features
+
+### Classifier
+
+The downstream classifier is a `LogisticRegression` model. This was chosen because it is:
+
+- lightweight
+- easy to retrain
+- easier to interpret than a heavier end-to-end architecture
+- strong enough in the projectâ€™s benchmark experiments
+
+## Adaptation workflow
+
+The adaptation process is centered on improving the original Fakeddit model.
+
+1. Train the original model on the Fakeddit training split.
+2. Evaluate it on the Fakeddit test set.
+3. Evaluate that same model on the African dataset before adaptation.
+4. Split the African dataset into:
+   - African-train
+   - African-holdout
+5. Retrain the same pipeline on:
+   - Fakeddit train
+   - plus African-train
+6. Evaluate the adapted model on:
+   - African holdout
+   - Fakeddit test
+7. Export the adapted classifier for demo use.
+
+## Notebook guide
+
+The main experimentation notebook is:
+
+- [notebooks/MBD_Technical_Group.ipynb](notebooks/MBD_Technical_Group.ipynb)
+
+The final project flow after the earlier benchmark stages is organized around the African adaptation story.
+
+Key sections include:
+
+- African dataset summary
+- sample African images with text and labels
+- African feature construction
+- original model on Fakeddit
+- original model on Africa before adaptation
+- African train/holdout split
+- tuning on Fakeddit + Africa-train
+- adapted model on African holdout
+- adapted model on Fakeddit
+- final comparison summary
+- adapted model export for the app
+
+## Running the project locally
+
+### 1. Create a virtual environment
+
+Windows PowerShell:
+
+```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
@@ -75,100 +265,133 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Run the app
+### 3. Run the notebook
+
+Open:
+
+- `notebooks/MBD_Technical_Group.ipynb`
+
+and rerun the cells from the African dataset section onward if you want the latest CSV and image updates to take effect.
+
+### 4. Run the Streamlit app
 
 ```bash
 streamlit run app.py
 ```
 
-Open the local URL printed by Streamlit (usually `http://localhost:8501`).
+## Streamlit app
 
-## Deployment (Streamlit Community Cloud)
+The app is a lightweight demo for the trained model.
 
-### Required app settings
+Inputs:
 
-- Repository: your GitHub repo
-- Branch: `main` (or your target branch)
-- Main file path: `app.py`
+- one uploaded image
+- one text string such as a caption, claim, or post
 
-### Dependency files used by Streamlit Cloud
+Outputs:
 
-- `requirements.txt` for Python packages
-- `packages.txt` for system packages (`build-essential`, `git`)
-- `runtime.txt` for Python version
+- predicted label
+- misinformation probability
+- risk level
+- confidence message
+- simple feature-group contribution summary
+- leave-one-word-out word influence estimates
 
-### Current deployment notes
+### Model-loading behavior
 
-- `numpy` is pinned to `1.26.4` for Streamlit compatibility.
-- `pillow` is pinned to `10.4.0` for Streamlit compatibility.
-- CLIP is installed via `clip-anytorch==2.6.0` (PyPI package), which is more stable for Streamlit Cloud than installing from a GitHub URL during build.
+`app.py` prefers an `adapted_model.pkl` located beside the app if one exists. Otherwise, it falls back to `model.pkl`.
 
-## Inference Flow in `app.py`
+At the moment:
 
-1. Load CLIP model and preprocessing function.
-2. Load classifier (`model.pkl`) with `joblib`.
-3. Validate user input (image + non-empty text).
-4. Extract CLIP image/text embeddings.
-5. Build 1537-dim feature vector.
-6. Predict class and probability with logistic regression.
-7. Display prediction, risk bar, and explanation.
+- the baseline model exists at the project root as `model.pkl`
+- an exported adapted model also exists under `demo/adapted_model.pkl`
 
-## Troubleshooting
+If you want the root app to use the adapted model directly, place or export `adapted_model.pkl` next to `app.py`.
 
-### Feature shape mismatch error
+## Deployment notes
 
-Error example:
-- `X has 1024 features, but LogisticRegression is expecting 1537 features`
+This repository is set up for Streamlit deployment.
 
-Cause:
-- Inference features do not match training features.
+Relevant files:
 
-Fix:
-- Ensure inference uses:
-- cosine similarity (`1`)
-- absolute difference (`512`)
-- concatenation (`1024`)
+- `requirements.txt`
+- `packages.txt`
+- `runtime.txt`
+- `.streamlit/config.toml`
 
-### `ModuleNotFoundError: No module named 'clip'`
+To deploy on Streamlit Community Cloud:
 
-Cause:
-- CLIP package missing in deployment environment.
+- set the repository to this GitHub project
+- set the branch to `main`
+- set the main file path to `app.py`
 
-Fix:
-- Keep `clip-anytorch==2.6.0` in `requirements.txt`.
-- Reboot app after deploy.
-- If needed, clear Streamlit cache and reboot.
+## Reproducibility
 
-### Dependency resolver conflicts on Streamlit Cloud
+To reproduce the final adaptation results as closely as possible:
 
-Cause:
-- Incompatible pinned versions (for example `numpy==2.x` with older Streamlit).
+1. ensure the African CSV and image paths are present locally
+2. open the notebook
+3. rerun the African-context cells from the dataset summary onward
+4. retrain the adapted model
+5. rerun the final comparison cells
+6. optionally export the adapted model for the app
 
-Fix:
-- Keep compatible pins in `requirements.txt`.
-- Redeploy after pushing changes.
+Core assumptions:
 
-## Reproducibility Notes
-
-- Model file: `model.pkl`
-- Expected model type: `LogisticRegression`
-- Expected input dimension: `1537`
-- CLIP backbone in app: `ViT-B/32`
-- Inference device: CPU
+- CLIP backbone: `ViT-B/32`
+- device: CPU in the app
+- feature dimension: `1537`
+- classifier family: logistic regression
 
 ## Limitations
 
-- This system estimates risk; it does not verify truth in a fact-checking sense.
-- Output quality depends on training data quality and coverage.
-- Out-of-domain or adversarial content may reduce reliability.
+- The system estimates misinformation risk rather than verifying factual truth.
+- The African dataset is still relatively small and partly manually curated.
+- The holdout set is small, so the results are best treated as promising directional evidence.
+- Performance on underrepresented languages, countries, or unseen misinformation styles may differ.
+- A good benchmark result does not guarantee broad real-world fairness or transfer.
 
-## Suggested Next Improvements
+## Ethical considerations
 
-1. Save full training artifacts (scaler/preprocessor + classifier) in one pipeline object.
-2. Add evaluation section in README with metrics and dataset split details.
-3. Add unit tests for feature-shape checks and model loading.
-4. Add CI to validate dependencies and app startup on each push.
+- The project involves politically and socially sensitive image-text pairs.
+- Misclassification can create both false positives and false negatives.
+- The tool should support human review, not replace it.
+- The African dataset should be interpreted carefully because it reflects limited local curation rather than continent-wide coverage.
+
+## Papers and reporting
+
+This repository supported several writing stages:
+
+- proposal
+- midterm report
+- final report
+- AAAI-style anonymous and camera-ready paper formatting
+
+The current final report angle is:
+
+> improve a benchmark-trained multimodal misinformation model for African-context use through targeted African adaptation
+
+## Suggested submission checklist
+
+For final class submission, the most important materials are:
+
+- this repository and README
+- the main notebook
+- the Streamlit app
+- the African-context CSV and image assets
+- the collection and annotation documentation
+- the final paper materials
+
+## Acknowledgment of current practical issue
+
+One practical detail to keep in mind is that the app and the exported demo model should live in consistent locations. The repository currently contains both:
+
+- a root-level baseline model used by `app.py`
+- a `demo/` copy of the adapted model
+
+This is fine for archival purposes, but for final polished deployment it is best to standardize the model path so the app always loads the intended artifact.
 
 ## License
 
-Add your preferred license here (for example MIT, Apache-2.0, or proprietary).
+No explicit license has been added yet. If you plan to release this repository publicly beyond class use, add a clear license and confirm that all redistributed assets meet the relevant usage terms.
+
