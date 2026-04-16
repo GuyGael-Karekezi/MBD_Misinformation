@@ -1,4 +1,4 @@
-﻿# Improving Benchmark-Trained Multimodal Misinformation Detection for African Contexts
+﻿# Improving Fakeddit for Africa: Domain Adaptation for Multimodal Misinformation Detection
 
 This repository contains the final technical-group project for multimodal misinformation detection using image-text consistency features from CLIP and a lightweight logistic regression classifier. The project began with a Fakeddit-trained baseline and then adapted that same model using African-context data so that it performs better on African examples while remaining strong on the original benchmark.
 
@@ -404,4 +404,5 @@ This is fine for archival purposes, but for final polished deployment it is best
 ## License
 
 No explicit license has been added yet. If you plan to release this repository publicly beyond class use, add a clear license and confirm that all redistributed assets meet the relevant usage terms.
+
 
