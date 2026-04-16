@@ -349,41 +349,23 @@ Core assumptions:
 - The tool should support human review, not replace it.
 - The African dataset should be interpreted carefully because it reflects limited local curation rather than continent-wide coverage.
 
-## Papers and reporting
-
-This repository supported several writing stages:
-
-- proposal
-- midterm report
-- final report
-- AAAI-style anonymous and camera-ready paper formatting
-
-The current final report angle is:
-
-> improve a benchmark-trained multimodal misinformation model for African-context use through targeted African adaptation
-
-## Suggested submission checklist
-
-For final class submission, the most important materials are:
-
-- this repository and README
-- the main notebook
-- the Streamlit app
-- the African-context CSV and image assets
-- the collection and annotation documentation
-- the final paper materials
-
 ## Acknowledgment of current practical issue
 
-One practical detail to keep in mind is that the app and the exported demo model should live in consistent locations. The repository currently contains both:
+One practical detail to keep in mind is that the app and the exported demo model should live in consistent locations. At the moment, we still have both:
 
 - a root-level baseline model used by `app.py`
 - a `demo/` copy of the adapted model
 
-This is fine for archival purposes, but for final polished deployment it is best to standardize the model path so the app always loads the intended artifact.
+This is acceptable for archival purposes, but for a cleaner final deployment we should standardize the model path so the app always loads the intended artifact.
 
 ## License
 
-No explicit license has been added yet. If you plan to release this repository publicly beyond class use, add a clear license and confirm that all redistributed assets meet the relevant usage terms.
+The code in this repository is released under the MIT License. See [LICENSE](LICENSE).
+
+Important note:
+
+- the MIT license applies to the project code and documentation written by the team
+- third-party datasets, images, and external materials may remain subject to their own original licenses or usage terms
+- anyone reusing the data assets should verify those source-specific conditions separately
 
 
