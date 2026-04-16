@@ -2,6 +2,12 @@
 __pycache__/
 *.pyc
 
+# Temporary workspaces and extracted templates
+tmp_*/
+AuthorKit26/
+artifacts/
+overleaf_abstract/
+
 # Data
 data/
 outputs/
@@ -12,6 +18,18 @@ outputs/
 # Logs
 *.out
 nohup.out
+*.log
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+
+# Redundant demo model exports
+demo/*.pkl
 
 # Large files
 *.parquet
