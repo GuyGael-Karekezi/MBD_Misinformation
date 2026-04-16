@@ -2,6 +2,16 @@
 
 This repository contains the final technical-group project for multimodal misinformation detection using image-text consistency features from CLIP and a lightweight logistic regression classifier. The project began with a Fakeddit-trained baseline and then adapted that same model using African-context data so that it performs better on African examples while remaining strong on the original benchmark.
 
+## Team
+
+Group name: `Technical Team 1`
+
+Team members:
+
+- Ishimwe Karekezi Guy Gael — Andrew ID: `iguygael`
+- Lynne Chepkwony — Andrew ID: `lchepkwo`
+- Emile Lucky Muhigira — Andrew ID: `emuhigir`
+
 The repository includes:
 
 - the main experimentation notebook
